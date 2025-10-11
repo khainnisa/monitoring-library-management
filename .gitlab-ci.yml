@@ -33,28 +33,32 @@ before_script:
   - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
   - composer install --no-interaction --prefer-dist --optimize-autoloader
 
+# -------------------------
+# TEST UNIT
+# -------------------------
 test:unit:
   stage: test
   services:
     - name: mysql:8.0
+      alias: mysql                               # ✅ Tambahkan alias agar host mysql dikenali
       command: ["--default-authentication-plugin=mysql_native_password"]
   script:
     # Wait for MySQL to be ready
     - echo "Waiting for MySQL to be ready..."
     - |
       for i in {1..30}; do
-        if mysql -h mysql -u root -p$MYSQL_ROOT_PASSWORD -e "SELECT 1" &>/dev/null; then
-          echo "MySQL is ready!"
+        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "SELECT 1" &>/dev/null; then
+          echo "✅ MySQL is ready!"
           break
         fi
-        echo "Waiting for MySQL... ($i/30)"
+        echo "⏳ Waiting for MySQL... ($i/30)"
         sleep 2
       done
 
     # Create database and user
     - echo "Setting up database and user..."
     - |
-      mysql -h mysql -u root -p$MYSQL_ROOT_PASSWORD -e "
+      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "
         CREATE DATABASE IF NOT EXISTS library_db;
         CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';
         GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';
@@ -63,21 +67,17 @@ test:unit:
 
     # Setup Laravel environment
     - cp .env.example .env
-    - sed -i "s/DB_HOST=db/DB_HOST=mysql/" .env
-    - sed -i "s/DB_USERNAME=laravel/DB_USERNAME=laravel/" .env
-    - sed -i "s/DB_PASSWORD=password/DB_PASSWORD=password/" .env
+    - sed -i "s/DB_HOST=.*/DB_HOST=mysql/" .env
+    - sed -i "s/DB_USERNAME=.*/DB_USERNAME=laravel/" .env
+    - sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=password/" .env
     - php artisan key:generate
     - php artisan config:clear
-
-    # Verify connection
-    - echo "Verifying database connection..."
-    - php artisan migrate:status || echo "Migrations table not found (expected)"
 
     # Run migrations
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
 
-    # Create directory and run tests
+    # Run tests
     - mkdir -p storage/test-results
     - chmod -R 777 storage
     - echo "Running tests..."
@@ -94,26 +94,30 @@ test:unit:
     - main
     - dev
 
+# -------------------------
+# TEST COVERAGE
+# -------------------------
 test:coverage:
   stage: test
   services:
     - name: mysql:8.0
+      alias: mysql
       command: ["--default-authentication-plugin=mysql_native_password"]
   script:
     # Wait for MySQL
     - |
       for i in {1..30}; do
-        if mysql -h mysql -u root -p$MYSQL_ROOT_PASSWORD -e "SELECT 1" &>/dev/null; then
-          echo "MySQL is ready!"
+        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "SELECT 1" &>/dev/null; then
+          echo "✅ MySQL is ready!"
           break
         fi
-        echo "Waiting for MySQL... ($i/30)"
+        echo "⏳ Waiting for MySQL... ($i/30)"
         sleep 2
       done
 
     # Create database and user
     - |
-      mysql -h mysql -u root -p$MYSQL_ROOT_PASSWORD -e "
+      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "
         CREATE DATABASE IF NOT EXISTS library_db;
         CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';
         GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';
@@ -122,20 +126,20 @@ test:coverage:
 
     # Setup environment
     - cp .env.example .env
-    - sed -i "s/DB_HOST=db/DB_HOST=mysql/" .env
-    - sed -i "s/DB_USERNAME=laravel/DB_USERNAME=laravel/" .env
-    - sed -i "s/DB_PASSWORD=password/DB_PASSWORD=password/" .env
+    - sed -i "s/DB_HOST=.*/DB_HOST=mysql/" .env
+    - sed -i "s/DB_USERNAME=.*/DB_USERNAME=laravel/" .env
+    - sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=password/" .env
     - php artisan key:generate
     - php artisan config:clear
     - php artisan migrate:fresh --seed --force
 
-    # Install Xdebug
+    # Install Xdebug for coverage
     - pecl install xdebug
     - docker-php-ext-enable xdebug
     - echo "xdebug.mode=coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
     # Run tests with coverage
-    - php artisan test --coverage-text
+    - vendor/bin/phpunit --coverage-text
 
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
   only:
@@ -143,6 +147,9 @@ test:coverage:
     - dev
   allow_failure: true
 
+# -------------------------
+# DEPLOY STAGING
+# -------------------------
 deploy:staging:
   stage: deploy
   environment:
@@ -150,16 +157,19 @@ deploy:staging:
     url: https://staging.library-management.com
     on_stop: stop:staging
   script:
-    - echo "Deploying to STAGING environment"
+    - echo "🚀 Deploying to STAGING environment"
     - echo "Application - $CI_PROJECT_NAME"
     - echo "Branch - $CI_COMMIT_REF_NAME"
     - echo "Commit - $CI_COMMIT_SHORT_SHA"
     - echo "Database - $DB_DATABASE"
-    - echo "Staging deployment completed"
+    - echo "✅ Staging deployment completed"
   only:
     - dev
   when: manual
 
+# -------------------------
+# DEPLOY PRODUCTION
+# -------------------------
 deploy:production:
   stage: deploy
   environment:
@@ -167,22 +177,25 @@ deploy:production:
     url: https://library-management.com
     on_stop: stop:production
   script:
-    - echo "Deploying to PRODUCTION environment"
+    - echo "🚀 Deploying to PRODUCTION environment"
     - echo "Application - $CI_PROJECT_NAME"
     - echo "Branch - $CI_COMMIT_REF_NAME"
     - echo "Commit - $CI_COMMIT_SHORT_SHA"
-    - echo "Production deployment completed"
+    - echo "✅ Production deployment completed"
   only:
     - main
   when: manual
 
+# -------------------------
+# STOP ENVIRONMENTS
+# -------------------------
 stop:staging:
   stage: deploy
   environment:
     name: staging
     action: stop
   script:
-    - echo "Stopping staging environment"
+    - echo "🛑 Stopping staging environment"
   when: manual
   only:
     - dev
@@ -193,7 +206,7 @@ stop:production:
     name: production
     action: stop
   script:
-    - echo "Stopping production environment"
+    - echo "🛑 Stopping production environment"
   when: manual
   only:
     - main
