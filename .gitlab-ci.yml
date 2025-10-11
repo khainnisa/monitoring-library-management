@@ -47,37 +47,31 @@ test:unit:
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SHOW DATABASES;"
     - echo "Setting up Laravel environment..."
-    # Hapus semua cache dan config lama TERMASUK .env.example
     - rm -rf bootstrap/cache/*.php
     - rm -rf storage/framework/cache/data/*
     - rm -f .env
     - rm -f .env.example
-    # Pastikan tidak ada file config yang ter-cache
     - rm -f config/database.php.cache || true
-    # Buat .env baru dengan heredoc
-    - |
-      cat > .env << EOF
-      APP_NAME=LibraryManagement
-      APP_ENV=testing
-      APP_KEY=
-      APP_DEBUG=true
-      APP_URL=http://localhost
-      
-      LOG_CHANNEL=stack
-      LOG_LEVEL=debug
-      
-      DB_CONNECTION=mysql
-      DB_HOST=mysql
-      DB_PORT=3306
-      DB_DATABASE=library_db
-      DB_USERNAME=root
-      DB_PASSWORD=rootpassword
-      
-      CACHE_DRIVER=array
-      QUEUE_CONNECTION=sync
-      SESSION_DRIVER=array
-      SESSION_LIFETIME=120
-      EOF
+    - echo "APP_NAME=LibraryManagement" > .env
+    - echo "APP_ENV=testing" >> .env
+    - echo "APP_KEY=" >> .env
+    - echo "APP_DEBUG=true" >> .env
+    - echo "APP_URL=http://localhost" >> .env
+    - echo "" >> .env
+    - echo "LOG_CHANNEL=stack" >> .env
+    - echo "LOG_LEVEL=debug" >> .env
+    - echo "" >> .env
+    - echo "DB_CONNECTION=mysql" >> .env
+    - echo "DB_HOST=mysql" >> .env
+    - echo "DB_PORT=3306" >> .env
+    - echo "DB_DATABASE=library_db" >> .env
+    - echo "DB_USERNAME=root" >> .env
+    - echo "DB_PASSWORD=rootpassword" >> .env
+    - echo "" >> .env
+    - echo "CACHE_DRIVER=array" >> .env
+    - echo "QUEUE_CONNECTION=sync" >> .env
+    - echo "SESSION_DRIVER=array" >> .env
+    - echo "SESSION_LIFETIME=120" >> .env
     - echo "Current .env content:"
     - cat .env
     # PENTING: Clear semua cache Laravel SEBELUM generate key
@@ -148,34 +142,31 @@ test:coverage:
     - echo "Setting up database..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
     - echo "Setting up Laravel environment..."
-    # Hapus cache dan config lama
     - rm -rf bootstrap/cache/*.php
     - rm -rf storage/framework/cache/data/*
     - rm -f .env
-    # Buat .env dengan heredoc
-    - |
-      cat > .env << EOF
-      APP_NAME=LibraryManagement
-      APP_ENV=testing
-      APP_KEY=
-      APP_DEBUG=true
-      APP_URL=http://localhost
-      
-      LOG_CHANNEL=stack
-      LOG_LEVEL=debug
-      
-      DB_CONNECTION=mysql
-      DB_HOST=mysql
-      DB_PORT=3306
-      DB_DATABASE=library_db
-      DB_USERNAME=root
-      DB_PASSWORD=rootpassword
-      
-      CACHE_DRIVER=array
-      QUEUE_CONNECTION=sync
-      SESSION_DRIVER=array
-      SESSION_LIFETIME=120
-      EOF
+    - rm -f .env.example
+    - rm -f config/database.php.cache || true
+    - echo "APP_NAME=LibraryManagement" > .env
+    - echo "APP_ENV=testing" >> .env
+    - echo "APP_KEY=" >> .env
+    - echo "APP_DEBUG=true" >> .env
+    - echo "APP_URL=http://localhost" >> .env
+    - echo "" >> .env
+    - echo "LOG_CHANNEL=stack" >> .env
+    - echo "LOG_LEVEL=debug" >> .env
+    - echo "" >> .env
+    - echo "DB_CONNECTION=mysql" >> .env
+    - echo "DB_HOST=mysql" >> .env
+    - echo "DB_PORT=3306" >> .env
+    - echo "DB_DATABASE=library_db" >> .env
+    - echo "DB_USERNAME=root" >> .env
+    - echo "DB_PASSWORD=rootpassword" >> .env
+    - echo "" >> .env
+    - echo "CACHE_DRIVER=array" >> .env
+    - echo "QUEUE_CONNECTION=sync" >> .env
+    - echo "SESSION_DRIVER=array" >> .env
+    - echo "SESSION_LIFETIME=120" >> .env
     # Clear cache dan generate key
     - php artisan config:clear || true
     - php artisan cache:clear || true
