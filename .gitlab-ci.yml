@@ -56,13 +56,10 @@ test:unit:
 
     # Create database and user
     - echo "Setting up database and user..."
-    - |
-      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 "
-        CREATE DATABASE IF NOT EXISTS library_db;
-        CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';
-        GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';
-        FLUSH PRIVILEGES;
-      "
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "FLUSH PRIVILEGES;"
 
     # Setup Laravel environment
     - cp .env.example .env
@@ -77,11 +74,22 @@ test:unit:
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
 
+    # Verify migrations
+    - echo "Verifying migrations..."
+    - php artisan migrate:status
+
+    # Check database tables
+    - mysql -hmysql -ularavel -ppassword --ssl=0 library_db -e "SHOW TABLES;"
+
     # Run tests
     - mkdir -p storage/test-results
     - chmod -R 777 storage
     - echo "Running tests..."
-    - vendor/bin/phpunit --log-junit=storage/test-results/test-results.xml || true
+    - echo "Test command: vendor/bin/phpunit --log-junit=storage/test-results/test-results.xml"
+    - vendor/bin/phpunit --log-junit=storage/test-results/test-results.xml --verbose || echo "Tests failed with exit code $?"
+
+    # Check if test results exist
+    - ls -la storage/test-results/ || echo "No test results directory"
 
   artifacts:
     when: always
@@ -122,7 +130,7 @@ test:coverage:
     # Create database and user
     - echo "Setting up database and user..."
     - |
-      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 "
+      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "
         CREATE DATABASE IF NOT EXISTS library_db;
         CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';
         GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';
