@@ -39,13 +39,14 @@ test:unit:
   services:
     - name: mysql:8.0
       alias: mysql
-      command: ["--default-authentication-plugin=mysql_native_password"]
+      command:
+        ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
     # Wait for MySQL to be ready
     - echo "Waiting for MySQL to be ready..."
     - |
       for i in {1..30}; do
-        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "SELECT 1" &>/dev/null; then
+        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl-mode=DISABLED -e "SELECT 1" &>/dev/null; then
           echo "✅ MySQL is ready!"
           break
         fi
@@ -56,7 +57,7 @@ test:unit:
     # Create database and user
     - echo "Setting up database and user..."
     - |
-      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "
+      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl-mode=DISABLED -e "
         CREATE DATABASE IF NOT EXISTS library_db;
         CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';
         GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';
@@ -103,13 +104,14 @@ test:coverage:
   services:
     - name: mysql:8.0
       alias: mysql
-      command: ["--default-authentication-plugin=mysql_native_password"]
+      command:
+        ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
     # Wait for MySQL
     - echo "Waiting for MySQL to be ready..."
     - |
       for i in {1..30}; do
-        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "SELECT 1" &>/dev/null; then
+        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl-mode=DISABLED -e "SELECT 1" &>/dev/null; then
           echo "✅ MySQL is ready!"
           break
         fi
@@ -120,7 +122,7 @@ test:coverage:
     # Create database and user
     - echo "Setting up database and user..."
     - |
-      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "
+      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl-mode=DISABLED -e "
         CREATE DATABASE IF NOT EXISTS library_db;
         CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';
         GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';
