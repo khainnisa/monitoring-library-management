@@ -54,6 +54,7 @@ test:unit:
     - rm -f .env.example
     # Pastikan tidak ada file config yang ter-cache
     - rm -f config/database.php.cache || true
+    # Buat .env baru dengan heredoc
     - |
       cat > .env << EOF
       APP_NAME=LibraryManagement
@@ -95,23 +96,11 @@ test:unit:
     - cat .env | grep APP_KEY
     # Verifikasi database connection dengan ROOT user
     - echo "Testing database connection dengan ROOT user..."
-    - php -r "echo 'DB_USERNAME: ' . getenv('DB_USERNAME') . PHP_EOL;"
-    - php -r "echo 'DB_HOST: ' . getenv('DB_HOST') . PHP_EOL;"
-    - |
-      php artisan tinker --execute="
-      echo 'Laravel DB Config:' . PHP_EOL;
-      echo 'Username: ' . config('database.connections.mysql.username') . PHP_EOL;
-      echo 'Host: ' . config('database.connections.mysql.host') . PHP_EOL;
-      echo 'Database: ' . config('database.connections.mysql.database') . PHP_EOL;
-      try {
-        DB::connection()->getPdo();
-        echo 'Database connection SUCCESS with ROOT user!' . PHP_EOL;
-      } catch (Exception \$e) {
-        echo 'Connection FAILED: ' . \$e->getMessage() . PHP_EOL;
-        exit(1);
-      }
-      "
-    - php artisan db:show || php artisan migrate:status || echo "Checking connection..."
+    - php -r "echo 'DB_USERNAME from ENV: ' . getenv('DB_USERNAME') . PHP_EOL;"
+    - php -r "echo 'DB_HOST from ENV: ' . getenv('DB_HOST') . PHP_EOL;"
+    - php artisan config:show database.connections.mysql || echo "Config check..."
+    - echo "Testing Laravel DB connection..."
+    - php -r "require 'vendor/autoload.php'; \$app = require_once 'bootstrap/app.php'; \$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap(); echo 'DB User: ' . config('database.connections.mysql.username') . PHP_EOL; try { DB::connection()->getPdo(); echo 'SUCCESS - Connected to MySQL with ROOT user!' . PHP_EOL; } catch (Exception \$e) { echo 'FAILED: ' . \$e->getMessage() . PHP_EOL; exit(1); }"
     # Run migrations
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
