@@ -33,23 +33,18 @@ test:unit:
       command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
     - echo "Waiting for MySQL to be ready..."
-    - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL... ($i/30)"; sleep 2; done
+    - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL..."; sleep 2; done
     - echo "Setting up database..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SHOW DATABASES;"
     - echo "Setting up Laravel environment..."
     - rm -rf bootstrap/cache/*.php
     - rm -rf storage/framework/cache/data/*
     - rm -f .env
-    - rm -f .env.example
     - echo "APP_NAME=LibraryManagement" > .env
     - echo "APP_ENV=testing" >> .env
     - echo "APP_KEY=" >> .env
     - echo "APP_DEBUG=true" >> .env
     - echo "APP_URL=http://localhost" >> .env
-    - echo "" >> .env
-    - echo "LOG_CHANNEL=stack" >> .env
-    - echo "LOG_LEVEL=debug" >> .env
     - echo "" >> .env
     - echo "DB_CONNECTION=mysql" >> .env
     - echo "DB_HOST=mysql" >> .env
@@ -61,68 +56,26 @@ test:unit:
     - echo "CACHE_DRIVER=array" >> .env
     - echo "QUEUE_CONNECTION=sync" >> .env
     - echo "SESSION_DRIVER=array" >> .env
-    - echo "SESSION_LIFETIME=120" >> .env
     - echo "Current .env content:"
     - cat .env
-    - echo "Clear all Laravel cache BEFORE loading .env..."
+    - echo "Clear all Laravel cache..."
     - php artisan config:clear || true
     - php artisan cache:clear || true
-    - php artisan route:clear || true
-    - php artisan view:clear || true
-    - rm -rf bootstrap/cache/config.php
-    - rm -rf bootstrap/cache/packages.php
-    - rm -rf bootstrap/cache/services.php
-    - echo "Verify .env database config:"
+    - echo "Verify database config from .env:"
     - grep DB_ .env
-    - echo ""
-    - echo "Check if config/database.php has hardcoded values..."
-    - grep -A 5 "'username'" config/database.php || echo "Cannot check database.php"
-    - echo ""
-    - echo "========================================="
-    - echo "TESTING MySQL CONNECTION WITH ROOT USER"
-    - echo "========================================="
-    - echo "Connection details:"
-    - echo "  Host: mysql"
-    - echo "  User: root"
-    - echo "  Database: library_db"
-    - echo ""
-    - echo "Executing MySQL query to verify user..."
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT CONCAT('Current User: ', USER()) as info; SELECT CONCAT('Current Database: ', DATABASE()) as info; SELECT CONCAT('Connection ID: ', CONNECTION_ID()) as info;"
-    - echo ""
-    - echo "Checking user privileges..."
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SHOW GRANTS FOR 'root'@'%';" || mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SHOW GRANTS;"
-    - echo ""
-    - echo "Listing all MySQL users..."
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT User, Host FROM mysql.user;"
-    - echo "========================================="
-    - echo ""
+    - echo "Testing MySQL connection with ROOT user:"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT USER(), DATABASE();"
     - echo "Generate Laravel APP_KEY..."
-    - php artisan key:generate --force --ansi --no-interaction
+    - php artisan key:generate --force --ansi
     - echo "After key generate:"
     - cat .env | grep APP_KEY
-    - echo ""
-    - echo "FORCE config refresh to read .env..."
-    - php artisan config:clear
-    - php artisan config:cache
-    - echo ""
-    - echo "========================================="
-    - echo "TESTING LARAVEL DATABASE CONNECTION"
-    - echo "========================================="
-    - echo "Laravel config database.connections.mysql:"
-    - php artisan config:show database.connections.mysql || echo "Config check..."
-    - echo ""
-    - echo "Testing actual Laravel DB connection..."
-    - php artisan db:monitor || php artisan db:show || echo "Attempting connection test..."
-    - echo "========================================="
-    - echo ""
+    - echo "Laravel database config:"
+    - php artisan config:show database.connections.mysql
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
     - echo "Setting up storage..."
     - mkdir -p storage/test-results
     - mkdir -p storage/logs
-    - mkdir -p storage/framework/sessions
-    - mkdir -p storage/framework/views
-    - mkdir -p storage/framework/cache
     - chmod -R 777 storage
     - chmod -R 777 bootstrap/cache
     - echo "Running tests..."
@@ -148,22 +101,18 @@ test:coverage:
       command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
     - echo "Waiting for MySQL to be ready..."
-    - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL... ($i/30)"; sleep 2; done
+    - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL..."; sleep 2; done
     - echo "Setting up database..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
     - echo "Setting up Laravel environment..."
     - rm -rf bootstrap/cache/*.php
     - rm -rf storage/framework/cache/data/*
     - rm -f .env
-    - rm -f .env.example
     - echo "APP_NAME=LibraryManagement" > .env
     - echo "APP_ENV=testing" >> .env
     - echo "APP_KEY=" >> .env
     - echo "APP_DEBUG=true" >> .env
     - echo "APP_URL=http://localhost" >> .env
-    - echo "" >> .env
-    - echo "LOG_CHANNEL=stack" >> .env
-    - echo "LOG_LEVEL=debug" >> .env
     - echo "" >> .env
     - echo "DB_CONNECTION=mysql" >> .env
     - echo "DB_HOST=mysql" >> .env
@@ -175,22 +124,10 @@ test:coverage:
     - echo "CACHE_DRIVER=array" >> .env
     - echo "QUEUE_CONNECTION=sync" >> .env
     - echo "SESSION_DRIVER=array" >> .env
-    - echo "SESSION_LIFETIME=120" >> .env
     - php artisan config:clear || true
     - php artisan cache:clear || true
-    - rm -rf bootstrap/cache/config.php
-    - php -r "foreach (file('.env') as $line) { if (trim($line) && strpos($line, '=') !== false && strpos($line, '#') !== 0) { putenv(trim($line)); } }"
-    - php -r "file_put_contents('config/database.php', str_replace(\"'username' => env('DB_USERNAME', 'forge')\", \"'username' => env('DB_USERNAME', 'root')\", file_get_contents('config/database.php')));"
-    - php -r "file_put_contents('config/database.php', str_replace(\"'username' => 'laravel'\", \"'username' => env('DB_USERNAME', 'root')\", file_get_contents('config/database.php')));"
-    - php artisan key:generate --force --ansi --no-interaction
-    - php artisan config:clear
-    - php artisan config:cache
-    - echo "APP_KEY generated:"
-    - cat .env | grep APP_KEY
+    - php artisan key:generate --force --ansi
     - php artisan migrate:fresh --seed --force
-    - mkdir -p storage/framework/sessions
-    - mkdir -p storage/framework/views
-    - mkdir -p storage/framework/cache
     - chmod -R 777 storage
     - chmod -R 777 bootstrap/cache
     - echo "Installing Xdebug for coverage..."
