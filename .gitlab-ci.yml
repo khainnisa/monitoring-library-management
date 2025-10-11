@@ -32,8 +32,7 @@ test:unit:
   services:
     - name: mysql:8.0
       alias: mysql
-      command:
-        ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
+      command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
     - echo "Waiting for MySQL to be ready..."
     - |
@@ -47,16 +46,22 @@ test:unit:
       done
     - echo "Setting up database and user..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "DROP USER IF EXISTS 'laravel'@'%';"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE USER 'laravel'@'%' IDENTIFIED BY 'password';"
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';"
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "FLUSH PRIVILEGES;"
+    - echo "Verifying database and user..."
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT User, Host FROM mysql.user WHERE User='laravel';"
+    - mysql -hmysql -ularavel -ppassword --ssl=0 library_db -e "SELECT 1;" || echo "Test connection failed"
     - echo "Setting up Laravel environment..."
     - cp .env.example .env
+    - echo "APP_KEY=" >> .env
     - sed -i "s/DB_HOST=.*/DB_HOST=mysql/" .env
     - sed -i "s/DB_DATABASE=.*/DB_DATABASE=library_db/" .env
     - sed -i "s/DB_USERNAME=.*/DB_USERNAME=laravel/" .env
     - sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=password/" .env
-    - php artisan key:generate
+    - cat .env | grep DB_
+    - php artisan key:generate --force
     - php artisan config:clear
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
@@ -82,8 +87,7 @@ test:coverage:
   services:
     - name: mysql:8.0
       alias: mysql
-      command:
-        ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
+      command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
     - echo "Waiting for MySQL to be ready..."
     - |
