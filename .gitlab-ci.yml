@@ -44,13 +44,16 @@ test:unit:
     - php artisan key:generate
     - php artisan config:clear
     - php artisan migrate:fresh --seed --env=testing
-    - php artisan test --parallel --log-junit=test-results.xml
+    - mkdir -p storage/test-results
+    - php artisan test --log-junit=storage/test-results/test-results.xml
+
   artifacts:
     when: always
     reports:
-      junit: test-results.xml
+      junit: storage/test-results/test-results.xml
     paths:
       - storage/logs/
+      - storage/test-results/
   only:
     - main
     - dev
