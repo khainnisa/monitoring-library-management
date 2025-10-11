@@ -1,0 +1,143 @@
+# Docker image untuk CI/CD
+image: php:8.2-cli
+
+# Stages dalam pipeline
+stages:
+  - test
+  - deploy
+
+# Variables global
+variables:
+  MYSQL_ROOT_PASSWORD: root
+  MYSQL_DATABASE: library_test_db
+  MYSQL_USER: laravel_test
+  MYSQL_PASSWORD: laravel_test
+  DB_HOST: mysql
+
+# Cache dependencies
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - vendor/
+    - node_modules/
+
+# Before script - install dependencies
+before_script:
+  - apt-get update -yqq
+  - apt-get install -yqq git libzip-dev libpng-dev libonig-dev libxml2-dev unzip
+  - docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
+  - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  - composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# STAGE 1: TESTING
+test:unit:
+  stage: test
+  services:
+    - mysql:8.0
+  script:
+    - cp .env.example .env
+    - php artisan key:generate
+    - php artisan config:clear
+    - php artisan migrate:fresh --seed --env=testing
+    - php artisan test --parallel
+  artifacts:
+    when: always
+    reports:
+      junit: test-results.xml
+    paths:
+      - storage/logs/
+  only:
+    - main
+    - dev
+  tags:
+    - docker
+
+test:coverage:
+  stage: test
+  services:
+    - mysql:8.0
+  script:
+    - cp .env.example .env
+    - php artisan key:generate
+    - php artisan config:clear
+    - php artisan migrate:fresh --seed --env=testing
+    - php artisan test --coverage
+  coverage: '/^\s*Lines:\s*\d+.\d+\%/'
+  only:
+    - main
+    - dev
+  allow_failure: true
+  tags:
+    - docker
+
+# STAGE 2: DEPLOYMENT
+deploy:staging:
+  stage: deploy
+  environment:
+    name: staging
+    url: https://staging.library-management.com
+    on_stop: stop:staging
+  script:
+    - echo "Deploying to STAGING environment..."
+    - echo "Database Host - $DB_HOST"
+    - echo "Database Name - $DB_DATABASE"
+    - php artisan migrate --force --env=staging
+    - php artisan config:cache
+    - php artisan route:cache
+    - php artisan view:cache
+    - echo "✅ Staging deployment completed!"
+  only:
+    - dev
+  when: manual
+  tags:
+    - docker
+
+deploy:production:
+  stage: deploy
+  environment:
+    name: production
+    url: https://library-management.com
+    on_stop: stop:production
+  script:
+    - echo "Deploying to PRODUCTION environment..."
+    - echo "Running database migrations..."
+    - php artisan migrate --force --env=production
+    - echo "Optimizing application..."
+    - php artisan config:cache
+    - php artisan route:cache
+    - php artisan view:cache
+    - php artisan optimize
+    - echo "✅ Production deployment completed!"
+  only:
+    - main
+  when: manual
+  tags:
+    - docker
+
+# Stop staging environment
+stop:staging:
+  stage: deploy
+  environment:
+    name: staging
+    action: stop
+  script:
+    - echo "Stopping staging environment..."
+  when: manual
+  only:
+    - dev
+  tags:
+    - docker
+
+# Stop production environment
+stop:production:
+  stage: deploy
+  environment:
+    name: production
+    action: stop
+  script:
+    - echo "Stopping production environment..."
+  when: manual
+  only:
+    - main
+  tags:
+    - docker
