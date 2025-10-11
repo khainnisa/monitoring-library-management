@@ -18,8 +18,7 @@ cache:
     - vendor/
 
 before_script:
-  - apt-get update -yqq
-  - apt-get install -yqq git libzip-dev libpng-dev libonig-dev libxml2-dev unzip curl default-mysql-client
+  - apk add --no-cache bash openssh-client curl git
   - docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
   - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
   - composer install --no-interaction --prefer-dist --optimize-autoloader
