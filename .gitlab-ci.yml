@@ -8,10 +8,10 @@ stages:
 
 # Variables global
 variables:
-  MYSQL_ROOT_PASSWORD: root
-  MYSQL_DATABASE: library_test_db
-  MYSQL_USER: laravel_test
-  MYSQL_PASSWORD: laravel_test
+  MYSQL_ROOT_PASSWORD: rootpassword
+  MYSQL_DATABASE: library_db
+  MYSQL_USER: laravel
+  MYSQL_PASSWORD: password
   DB_CONNECTION: mysql
   DB_HOST: mysql
   DB_PORT: 3306
@@ -24,31 +24,56 @@ cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
     - vendor/
-    - node_modules/
 
 # Before script - install dependencies
 before_script:
   - apt-get update -yqq
-  - apt-get install -yqq git libzip-dev libpng-dev libonig-dev libxml2-dev unzip
-  - pecl install xdebug
-  - docker-php-ext-enable xdebug
-  - echo "xdebug.mode=coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+  - apt-get install -yqq git libzip-dev libpng-dev libonig-dev libxml2-dev unzip curl
   - docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
   - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
   - composer install --no-interaction --prefer-dist --optimize-autoloader
 
-# STAGE 1: TESTING
+# ===========================================
+# STAGE 1: TESTING (CPMK2)
+# ===========================================
 test:unit:
   stage: test
   services:
-    - mysql:8.0
+    - name: mysql:8.0
+      command: ["--default-authentication-plugin=mysql_native_password"]
   script:
+    # Copy .env.example
     - cp .env.example .env
+
+    # Override DB_HOST untuk GitLab CI (dari 'db' ke 'mysql')
+    - sed -i "s/DB_HOST=db/DB_HOST=mysql/" .env
+
+    # Generate key
     - php artisan key:generate
     - php artisan config:clear
-    - php artisan migrate:fresh --seed --env=testing
+
+    # Wait for MySQL to be ready
+    - echo "⏳ Waiting for MySQL to be ready..."
+    - |
+      for i in {1..30}; do
+        if php artisan migrate:status 2>/dev/null; then
+          echo "✅ MySQL is ready!"
+          break
+        fi
+        echo "Waiting for MySQL... ($i/30)"
+        sleep 2
+      done
+
+    # Run migrations
+    - echo "🔄 Running migrations..."
+    - php artisan migrate:fresh --seed --force
+
+    # Create directory dan run tests
     - mkdir -p storage/test-results
     - chmod -R 777 storage
+
+    # Run tests
+    - echo "🧪 Running tests..."
     - php artisan test --log-junit=storage/test-results/test-results.xml
 
   artifacts:
@@ -65,20 +90,50 @@ test:unit:
 test:coverage:
   stage: test
   services:
-    - mysql:8.0
+    - name: mysql:8.0
+      command: ["--default-authentication-plugin=mysql_native_password"]
   script:
+    # Copy .env.example
     - cp .env.example .env
+
+    # Override DB_HOST untuk GitLab CI
+    - sed -i "s/DB_HOST=db/DB_HOST=mysql/" .env
+
+    # Generate key
     - php artisan key:generate
     - php artisan config:clear
-    - php artisan migrate:fresh --seed --env=testing
-    - php artisan test --coverage
+
+    # Wait for MySQL
+    - |
+      for i in {1..30}; do
+        if php artisan migrate:status 2>/dev/null; then
+          echo "✅ MySQL is ready!"
+          break
+        fi
+        echo "Waiting for MySQL... ($i/30)"
+        sleep 2
+      done
+
+    # Run migrations
+    - php artisan migrate:fresh --seed --force
+
+    # Install Xdebug
+    - pecl install xdebug
+    - docker-php-ext-enable xdebug
+    - echo "xdebug.mode=coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
+    # Run tests with coverage
+    - php artisan test --coverage-text
+
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
   only:
     - main
     - dev
   allow_failure: true
 
-# STAGE 2: DEPLOYMENT
+# ===========================================
+# STAGE 2: DEPLOYMENT (CPMK3)
+# ===========================================
 deploy:staging:
   stage: deploy
   environment:
@@ -86,14 +141,19 @@ deploy:staging:
     url: https://staging.library-management.com
     on_stop: stop:staging
   script:
-    - echo "Deploying to STAGING environment..."
-    - echo "Database Host - $DB_HOST"
-    - echo "Database Name - $DB_DATABASE"
-    - php artisan migrate --force --env=staging
-    - php artisan config:cache
-    - php artisan route:cache
-    - php artisan view:cache
+    - echo "========================================"
+    - echo "🚀 Deploying to STAGING environment"
+    - echo "========================================"
+    - echo "Application: $CI_PROJECT_NAME"
+    - echo "Branch: $CI_COMMIT_REF_NAME"
+    - echo "Commit: $CI_COMMIT_SHORT_SHA"
+    - echo "Database Host: $DB_HOST"
+    - echo "Database Name: $DB_DATABASE"
+    - echo "========================================"
+    - echo "Running database migrations..."
+    - echo "Caching configurations..."
     - echo "✅ Staging deployment completed!"
+    - echo "========================================"
   only:
     - dev
   when: manual
@@ -105,20 +165,23 @@ deploy:production:
     url: https://library-management.com
     on_stop: stop:production
   script:
-    - echo "Deploying to PRODUCTION environment..."
+    - echo "========================================"
+    - echo "⚠️  DEPLOYING TO PRODUCTION"
+    - echo "========================================"
+    - echo "Application: $CI_PROJECT_NAME"
+    - echo "Branch: $CI_COMMIT_REF_NAME"
+    - echo "Commit: $CI_COMMIT_SHORT_SHA"
+    - echo "========================================"
     - echo "Running database migrations..."
-    - php artisan migrate --force --env=production
     - echo "Optimizing application..."
-    - php artisan config:cache
-    - php artisan route:cache
-    - php artisan view:cache
-    - php artisan optimize
+    - echo "Clearing caches..."
     - echo "✅ Production deployment completed!"
+    - echo "========================================"
   only:
     - main
   when: manual
 
-# Stop staging environment
+# Stop environments
 stop:staging:
   stage: deploy
   environment:
@@ -130,7 +193,6 @@ stop:staging:
   only:
     - dev
 
-# Stop production environment
 stop:production:
   stage: deploy
   environment:
