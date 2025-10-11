@@ -17,20 +17,20 @@ cache:
   paths:
     - vendor/
 
-before_script:
-  - apt-get update -yqq
-  - apt-get install -yqq bash curl git unzip libzip-dev libpng-dev libonig-dev libxml2-dev default-mysql-client
-  - docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
-  - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-  - composer install --no-interaction --prefer-dist --optimize-autoloader
-
 test:unit:
   image: php:8.2-fpm
   stage: test
   services:
     - name: mysql:8.0
       alias: mysql
-      command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
+      command:
+        ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
+  before_script:
+    - apt-get update -yqq
+    - apt-get install -yqq bash curl git unzip libzip-dev libpng-dev libonig-dev libxml2-dev default-mysql-client
+    - docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer install --no-interaction --prefer-dist --optimize-autoloader
   script:
     - echo "Waiting for MySQL to be ready..."
     - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL..."; sleep 2; done
@@ -106,7 +106,14 @@ test:coverage:
   services:
     - name: mysql:8.0
       alias: mysql
-      command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
+      command:
+        ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
+  before_script:
+    - apt-get update -yqq
+    - apt-get install -yqq bash curl git unzip libzip-dev libpng-dev libonig-dev libxml2-dev default-mysql-client
+    - docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    - composer install --no-interaction --prefer-dist --optimize-autoloader
   script:
     - echo "Waiting for MySQL to be ready..."
     - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL..."; sleep 2; done
@@ -150,7 +157,7 @@ test:coverage:
 
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
-    
+
     - echo "Setting up storage..."
     - chmod -R 777 storage
     - chmod -R 777 bootstrap/cache
