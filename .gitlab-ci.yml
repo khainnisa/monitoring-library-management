@@ -34,52 +34,61 @@ test:unit:
   script:
     - echo "Waiting for MySQL to be ready..."
     - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL..."; sleep 2; done
+
     - echo "Setting up database..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
+
     - echo "Setting up Laravel environment..."
     - rm -rf bootstrap/cache/*.php
     - rm -rf storage/framework/cache/data/*
     - rm -f .env
-    - echo "APP_NAME=LibraryManagement" > .env
-    - echo "APP_ENV=testing" >> .env
-    - echo "APP_KEY=" >> .env
-    - echo "APP_DEBUG=true" >> .env
-    - echo "APP_URL=http://localhost" >> .env
-    - echo "" >> .env
-    - echo "DB_CONNECTION=mysql" >> .env
-    - echo "DB_HOST=mysql" >> .env
-    - echo "DB_PORT=3306" >> .env
-    - echo "DB_DATABASE=library_db" >> .env
-    - echo "DB_USERNAME=root" >> .env
-    - echo "DB_PASSWORD=rootpassword" >> .env
-    - echo "" >> .env
-    - echo "CACHE_DRIVER=array" >> .env
-    - echo "QUEUE_CONNECTION=sync" >> .env
-    - echo "SESSION_DRIVER=array" >> .env
-    - echo "Current .env content:"
+    - |
+      cat > .env <<'EOF'
+      APP_NAME=LibraryManagement
+      APP_ENV=testing
+      APP_KEY=
+      APP_DEBUG=true
+      APP_URL=http://localhost
+
+      DB_CONNECTION=mysql
+      DB_HOST=mysql
+      DB_PORT=3306
+      DB_DATABASE=library_db
+      DB_USERNAME=root
+      DB_PASSWORD=rootpassword
+
+      CACHE_DRIVER=array
+      QUEUE_CONNECTION=sync
+      SESSION_DRIVER=array
+      EOF
+
+    - echo "✅ .env file created successfully:"
     - cat .env
-    - echo "Clear all Laravel cache..."
+
+    - echo "Clearing and caching Laravel configuration..."
     - php artisan config:clear || true
     - php artisan cache:clear || true
-    - echo "Verify database config from .env:"
-    - grep DB_ .env
-    - echo "Testing MySQL connection with ROOT user:"
+    - php artisan config:cache || true
+
+    - echo "Testing MySQL connection with ROOT user..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT USER(), DATABASE();"
-    - echo "Generate Laravel APP_KEY..."
-    - php artisan key:generate --force --ansi
+
+    - echo "Generating Laravel APP_KEY..."
+    - php artisan key:generate --force --ansi || true
+
     - echo "After key generate:"
-    - cat .env | grep APP_KEY
-    - echo "Laravel database config:"
-    - php artisan config:show database.connections.mysql
+    - grep APP_KEY .env
+
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
-    - echo "Setting up storage..."
-    - mkdir -p storage/test-results
-    - mkdir -p storage/logs
-    - chmod -R 777 storage
-    - chmod -R 777 bootstrap/cache
+
+    - echo "Setting up storage permissions..."
+    - mkdir -p storage/test-results storage/logs
+    - chmod -R 777 storage bootstrap/cache
+
     - echo "Running tests..."
     - vendor/bin/phpunit --log-junit=storage/test-results/test-results.xml || true
+
   artifacts:
     when: always
     reports:
@@ -100,42 +109,48 @@ test:coverage:
       alias: mysql
       command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
-    - echo "Waiting for MySQL to be ready..."
-    - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL..."; sleep 2; done
-    - echo "Setting up database..."
+    - echo "Waiting for MySQL..."
+    - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL ready!"; break; fi; echo "Waiting..."; sleep 2; done
+
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
-    - echo "Setting up Laravel environment..."
-    - rm -rf bootstrap/cache/*.php
-    - rm -rf storage/framework/cache/data/*
+
     - rm -f .env
-    - echo "APP_NAME=LibraryManagement" > .env
-    - echo "APP_ENV=testing" >> .env
-    - echo "APP_KEY=" >> .env
-    - echo "APP_DEBUG=true" >> .env
-    - echo "APP_URL=http://localhost" >> .env
-    - echo "" >> .env
-    - echo "DB_CONNECTION=mysql" >> .env
-    - echo "DB_HOST=mysql" >> .env
-    - echo "DB_PORT=3306" >> .env
-    - echo "DB_DATABASE=library_db" >> .env
-    - echo "DB_USERNAME=root" >> .env
-    - echo "DB_PASSWORD=rootpassword" >> .env
-    - echo "" >> .env
-    - echo "CACHE_DRIVER=array" >> .env
-    - echo "QUEUE_CONNECTION=sync" >> .env
-    - echo "SESSION_DRIVER=array" >> .env
+    - |
+      cat > .env <<'EOF'
+      APP_NAME=LibraryManagement
+      APP_ENV=testing
+      APP_KEY=
+      APP_DEBUG=true
+      APP_URL=http://localhost
+
+      DB_CONNECTION=mysql
+      DB_HOST=mysql
+      DB_PORT=3306
+      DB_DATABASE=library_db
+      DB_USERNAME=root
+      DB_PASSWORD=rootpassword
+
+      CACHE_DRIVER=array
+      QUEUE_CONNECTION=sync
+      SESSION_DRIVER=array
+      EOF
+
     - php artisan config:clear || true
     - php artisan cache:clear || true
+    - php artisan config:cache || true
     - php artisan key:generate --force --ansi
     - php artisan migrate:fresh --seed --force
-    - chmod -R 777 storage
-    - chmod -R 777 bootstrap/cache
+
+    - chmod -R 777 storage bootstrap/cache
+
     - echo "Installing Xdebug for coverage..."
     - pecl install xdebug
     - docker-php-ext-enable xdebug
     - echo "xdebug.mode=coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-    - echo "Running tests with coverage..."
+
+    - echo "Running PHPUnit with coverage..."
     - vendor/bin/phpunit --coverage-text --coverage-cobertura=coverage.cobertura.xml
+
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
   artifacts:
     reports:
@@ -160,12 +175,10 @@ deploy:staging:
   before_script:
     - apk add --no-cache openssh-client bash
   script:
-    - echo "Deploying to STAGING environment"
-    - echo "Application - $CI_PROJECT_NAME"
-    - echo "Branch - $CI_COMMIT_REF_NAME"
-    - echo "Commit - $CI_COMMIT_SHORT_SHA"
-    - echo "Database - $DB_DATABASE"
-    - echo "Staging deployment completed"
+    - echo "Deploying to STAGING..."
+    - echo "App: $CI_PROJECT_NAME | Branch: $CI_COMMIT_REF_NAME | Commit: $CI_COMMIT_SHORT_SHA"
+    - echo "Database: $DB_DATABASE"
+    - echo "✅ Staging deployment completed"
   only:
     - dev
   when: manual
@@ -180,11 +193,9 @@ deploy:production:
   before_script:
     - apk add --no-cache openssh-client bash
   script:
-    - echo "Deploying to PRODUCTION environment"
-    - echo "Application - $CI_PROJECT_NAME"
-    - echo "Branch - $CI_COMMIT_REF_NAME"
-    - echo "Commit - $CI_COMMIT_SHORT_SHA"
-    - echo "Production deployment completed"
+    - echo "Deploying to PRODUCTION..."
+    - echo "App: $CI_PROJECT_NAME | Branch: $CI_COMMIT_REF_NAME | Commit: $CI_COMMIT_SHORT_SHA"
+    - echo "✅ Production deployment completed"
   only:
     - main
   when: manual
@@ -196,7 +207,7 @@ stop:staging:
     name: staging
     action: stop
   script:
-    - echo "Stopping staging environment"
+    - echo "Stopping staging environment..."
   when: manual
   only:
     - dev
@@ -208,7 +219,7 @@ stop:production:
     name: production
     action: stop
   script:
-    - echo "Stopping production environment"
+    - echo "Stopping production environment..."
   when: manual
   only:
     - main
