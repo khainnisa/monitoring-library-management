@@ -30,19 +30,10 @@ test:unit:
   services:
     - name: mysql:8.0
       alias: mysql
-      command:
-        ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
+      command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
     - echo "Waiting for MySQL to be ready..."
-    - |
-      for i in {1..30}; do
-        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then
-          echo "MySQL is ready!"
-          break
-        fi
-        echo "Waiting for MySQL... ($i/30)"
-        sleep 2
-      done
+    - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL... ($i/30)"; sleep 2; done
     - echo "Setting up database..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SHOW DATABASES;"
@@ -51,7 +42,6 @@ test:unit:
     - rm -rf storage/framework/cache/data/*
     - rm -f .env
     - rm -f .env.example
-    - rm -f config/database.php.cache || true
     - echo "APP_NAME=LibraryManagement" > .env
     - echo "APP_ENV=testing" >> .env
     - echo "APP_KEY=" >> .env
@@ -74,38 +64,31 @@ test:unit:
     - echo "SESSION_LIFETIME=120" >> .env
     - echo "Current .env content:"
     - cat .env
-    # PENTING: Clear semua cache Laravel SEBELUM generate key
+    - echo "Clear all Laravel cache..."
     - php artisan config:clear || true
     - php artisan cache:clear || true
     - php artisan route:clear || true
     - php artisan view:clear || true
-    # Verify .env dibaca dengan benar
-    - echo "Verifying database config from .env:"
+    - echo "Verify .env database config:"
     - grep DB_ .env
-    - echo "Testing dengan credentials ROOT:"
+    - echo "Testing MySQL connection with ROOT user:"
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT USER(), DATABASE();"
-    # Generate APP_KEY dengan cara yang benar
+    - echo "Generate Laravel APP_KEY..."
     - php artisan key:generate --force --ansi
     - echo "After key generate:"
     - cat .env | grep APP_KEY
-    # Verifikasi database connection dengan ROOT user
-    - echo "Testing database connection dengan ROOT user..."
-    - php -r "echo 'DB_USERNAME from ENV: ' . getenv('DB_USERNAME') . PHP_EOL;"
-    - php -r "echo 'DB_HOST from ENV: ' . getenv('DB_HOST') . PHP_EOL;"
-    - php artisan config:show database.connections.mysql || echo "Config check..."
-    - echo "Testing Laravel DB connection..."
-    - php -r "require 'vendor/autoload.php'; \$app = require_once 'bootstrap/app.php'; \$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap(); echo 'DB User: ' . config('database.connections.mysql.username') . PHP_EOL; try { DB::connection()->getPdo(); echo 'SUCCESS - Connected to MySQL with ROOT user!' . PHP_EOL; } catch (Exception \$e) { echo 'FAILED: ' . \$e->getMessage() . PHP_EOL; exit(1); }"
-    # Run migrations
+    - echo "Test Laravel database connection..."
+    - php artisan config:show database.connections.mysql || echo "Checking config..."
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
-    # Setup storage
     - echo "Setting up storage..."
     - mkdir -p storage/test-results
     - mkdir -p storage/logs
-    - mkdir -p storage/framework/{sessions,views,cache}
+    - mkdir -p storage/framework/sessions
+    - mkdir -p storage/framework/views
+    - mkdir -p storage/framework/cache
     - chmod -R 777 storage
     - chmod -R 777 bootstrap/cache
-    # Run tests
     - echo "Running tests..."
     - vendor/bin/phpunit --log-junit=storage/test-results/test-results.xml || true
   artifacts:
@@ -126,19 +109,10 @@ test:coverage:
   services:
     - name: mysql:8.0
       alias: mysql
-      command:
-        ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
+      command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl"]
   script:
     - echo "Waiting for MySQL to be ready..."
-    - |
-      for i in {1..30}; do
-        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then
-          echo "MySQL is ready!"
-          break
-        fi
-        echo "Waiting for MySQL... ($i/30)"
-        sleep 2
-      done
+    - for i in {1..30}; do if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then echo "MySQL is ready!"; break; fi; echo "Waiting for MySQL... ($i/30)"; sleep 2; done
     - echo "Setting up database..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
     - echo "Setting up Laravel environment..."
@@ -146,7 +120,6 @@ test:coverage:
     - rm -rf storage/framework/cache/data/*
     - rm -f .env
     - rm -f .env.example
-    - rm -f config/database.php.cache || true
     - echo "APP_NAME=LibraryManagement" > .env
     - echo "APP_ENV=testing" >> .env
     - echo "APP_KEY=" >> .env
@@ -167,24 +140,21 @@ test:coverage:
     - echo "QUEUE_CONNECTION=sync" >> .env
     - echo "SESSION_DRIVER=array" >> .env
     - echo "SESSION_LIFETIME=120" >> .env
-    # Clear cache dan generate key
     - php artisan config:clear || true
     - php artisan cache:clear || true
     - php artisan key:generate --force --ansi
     - echo "APP_KEY generated:"
     - cat .env | grep APP_KEY
-    # Run migrations
     - php artisan migrate:fresh --seed --force
-    # Setup storage
-    - mkdir -p storage/framework/{sessions,views,cache}
+    - mkdir -p storage/framework/sessions
+    - mkdir -p storage/framework/views
+    - mkdir -p storage/framework/cache
     - chmod -R 777 storage
     - chmod -R 777 bootstrap/cache
-    # Install Xdebug
     - echo "Installing Xdebug for coverage..."
     - pecl install xdebug
     - docker-php-ext-enable xdebug
     - echo "xdebug.mode=coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-    # Run tests with coverage
     - echo "Running tests with coverage..."
     - vendor/bin/phpunit --coverage-text --coverage-cobertura=coverage.cobertura.xml
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
