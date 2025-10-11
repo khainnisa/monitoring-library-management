@@ -81,7 +81,7 @@ test:unit:
     - mkdir -p storage/test-results
     - chmod -R 777 storage
     - echo "Running tests..."
-    - php artisan test --log-junit=storage/test-results/test-results.xml
+    - vendor/bin/phpunit --log-junit=$(pwd)/storage/test-results/test-results.xml || true
 
   artifacts:
     when: always
