@@ -64,21 +64,66 @@ test:unit:
     - echo "SESSION_LIFETIME=120" >> .env
     - echo "Current .env content:"
     - cat .env
-    - echo "Clear all Laravel cache..."
+    - echo "Clear all Laravel cache BEFORE loading .env..."
     - php artisan config:clear || true
     - php artisan cache:clear || true
     - php artisan route:clear || true
     - php artisan view:clear || true
+    - rm -rf bootstrap/cache/config.php
+    - rm -rf bootstrap/cache/packages.php
+    - rm -rf bootstrap/cache/services.php
+    - echo "Force reload environment variables..."
+    - php -r "foreach (file('.env') as \$line) { if (trim(\$line) && strpos(\$line, '=') !== false && strpos(\$line, '#') !== 0) { putenv(trim(\$line)); } }"
     - echo "Verify .env database config:"
     - grep DB_ .env
-    - echo "Testing MySQL connection with ROOT user:"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT USER(), DATABASE();"
+    - echo ""
+    - echo "Check if config/database.php has hardcoded values..."
+    - grep -A 5 "'username'" config/database.php || echo "Cannot check database.php"
+    - echo ""
+    - echo "Override database config to force use ROOT..."
+    - php -r "file_put_contents('config/database.php', str_replace(\"'username' => env('DB_USERNAME', 'forge')\", \"'username' => env('DB_USERNAME', 'root')\", file_get_contents('config/database.php')));"
+    - php -r "file_put_contents('config/database.php', str_replace(\"'username' => 'laravel'\", \"'username' => env('DB_USERNAME', 'root')\", file_get_contents('config/database.php')));"
+    - echo ""
+    - echo "========================================="
+    - echo "TESTING MySQL CONNECTION WITH ROOT USER"
+    - echo "========================================="
+    - echo "Connection details:"
+    - echo "  Host: mysql"
+    - echo "  User: root"
+    - echo "  Database: library_db"
+    - echo ""
+    - echo "Executing MySQL query to verify user..."
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT CONCAT('Current User: ', USER()) as info; SELECT CONCAT('Current Database: ', DATABASE()) as info; SELECT CONCAT('Connection ID: ', CONNECTION_ID()) as info;"
+    - echo ""
+    - echo "Checking user privileges..."
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SHOW GRANTS FOR 'root'@'%';" || mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SHOW GRANTS;"
+    - echo ""
+    - echo "Listing all MySQL users..."
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT User, Host FROM mysql.user;"
+    - echo "========================================="
+    - echo ""
     - echo "Generate Laravel APP_KEY..."
-    - php artisan key:generate --force --ansi
+    - php artisan key:generate --force --ansi --no-interaction
     - echo "After key generate:"
     - cat .env | grep APP_KEY
-    - echo "Test Laravel database connection..."
-    - php artisan config:show database.connections.mysql || echo "Checking config..."
+    - echo ""
+    - echo "FORCE config refresh to read .env..."
+    - php artisan config:clear
+    - php artisan config:cache
+    - echo ""
+    - echo "========================================="
+    - echo "TESTING LARAVEL DATABASE CONNECTION"
+    - echo "========================================="
+    - echo "Laravel config database.connections.mysql:"
+    - php artisan config:show database.connections.mysql || echo "Config check..."
+    - echo ""
+    - echo "Testing actual Laravel DB connection..."
+    - php artisan db:monitor || php artisan db:show || echo "Attempting connection test..."
+    - echo ""
+    - echo "Verify connection with custom PHP script..."
+    - php -r "require 'vendor/autoload.php'; \$app = require_once 'bootstrap/app.php'; \$kernel = \$app->make(Illuminate\Contracts\Console\Kernel::class); \$kernel->bootstrap(); echo '✓ Laravel DB Username: ' . config('database.connections.mysql.username') . PHP_EOL; echo '✓ Laravel DB Host: ' . config('database.connections.mysql.host') . PHP_EOL; echo '✓ Laravel DB Database: ' . config('database.connections.mysql.database') . PHP_EOL; try { \$pdo = DB::connection()->getPdo(); echo '✓ PDO Connection: SUCCESS' . PHP_EOL; echo '✓ Connected as: ' . DB::select(\"SELECT USER() as user\")[0]->user . PHP_EOL; } catch (Exception \$e) { echo '✗ Connection FAILED: ' . \$e->getMessage() . PHP_EOL; exit(1); }"
+    - echo "========================================="
+    - echo ""
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
     - echo "Setting up storage..."
@@ -142,7 +187,13 @@ test:coverage:
     - echo "SESSION_LIFETIME=120" >> .env
     - php artisan config:clear || true
     - php artisan cache:clear || true
-    - php artisan key:generate --force --ansi
+    - rm -rf bootstrap/cache/config.php
+    - php -r "foreach (file('.env') as \$line) { if (trim(\$line) && strpos(\$line, '=') !== false && strpos(\$line, '#') !== 0) { putenv(trim(\$line)); } }"
+    - php -r "file_put_contents('config/database.php', str_replace(\"'username' => env('DB_USERNAME', 'forge')\", \"'username' => env('DB_USERNAME', 'root')\", file_get_contents('config/database.php')));"
+    - php -r "file_put_contents('config/database.php', str_replace(\"'username' => 'laravel'\", \"'username' => env('DB_USERNAME', 'root')\", file_get_contents('config/database.php')));"
+    - php artisan key:generate --force --ansi --no-interaction
+    - php artisan config:clear
+    - php artisan config:cache
     - echo "APP_KEY generated:"
     - cat .env | grep APP_KEY
     - php artisan migrate:fresh --seed --force
