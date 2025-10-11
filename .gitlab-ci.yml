@@ -46,7 +46,7 @@ test:unit:
     - echo "Waiting for MySQL to be ready..."
     - |
       for i in {1..30}; do
-        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl-mode=DISABLED -e "SELECT 1" &>/dev/null; then
+        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then
           echo "✅ MySQL is ready!"
           break
         fi
@@ -57,7 +57,7 @@ test:unit:
     # Create database and user
     - echo "Setting up database and user..."
     - |
-      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl-mode=DISABLED -e "
+      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 "
         CREATE DATABASE IF NOT EXISTS library_db;
         CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';
         GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';
@@ -111,7 +111,7 @@ test:coverage:
     - echo "Waiting for MySQL to be ready..."
     - |
       for i in {1..30}; do
-        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl-mode=DISABLED -e "SELECT 1" &>/dev/null; then
+        if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT 1" &>/dev/null; then
           echo "✅ MySQL is ready!"
           break
         fi
@@ -122,7 +122,7 @@ test:coverage:
     # Create database and user
     - echo "Setting up database and user..."
     - |
-      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl-mode=DISABLED -e "
+      mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 "
         CREATE DATABASE IF NOT EXISTS library_db;
         CREATE USER IF NOT EXISTS 'laravel'@'%' IDENTIFIED BY 'password';
         GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';
