@@ -5,14 +5,12 @@ stages:
 variables:
   MYSQL_ROOT_PASSWORD: rootpassword
   MYSQL_DATABASE: library_db
-  MYSQL_USER: laravel
-  MYSQL_PASSWORD: password
   DB_CONNECTION: mysql
   DB_HOST: mysql
   DB_PORT: 3306
   DB_DATABASE: library_db
-  DB_USERNAME: laravel
-  DB_PASSWORD: password
+  DB_USERNAME: root
+  DB_PASSWORD: rootpassword
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -47,14 +45,6 @@ test:unit:
       done
     - echo "Setting up database and user..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "DROP USER IF EXISTS 'laravel'@'%';"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE USER 'laravel'@'%' IDENTIFIED WITH mysql_native_password BY 'password';"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "GRANT ALL PRIVILEGES ON *.* TO 'laravel'@'%' WITH GRANT OPTION;"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "FLUSH PRIVILEGES;"
-    - echo "Verifying user was created..."
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT User, Host, plugin FROM mysql.user WHERE User='laravel';"
-    - echo "Testing laravel user connection..."
-    - mysql -hmysql -ularavel -ppassword --ssl=0 -e "SHOW DATABASES;"
     - echo "Setting up Laravel environment..."
     - rm -f .env
     - echo "APP_NAME=LibraryManagement" > .env
@@ -67,8 +57,8 @@ test:unit:
     - echo "DB_HOST=mysql" >> .env
     - echo "DB_PORT=3306" >> .env
     - echo "DB_DATABASE=library_db" >> .env
-    - echo "DB_USERNAME=laravel" >> .env
-    - echo "DB_PASSWORD=password" >> .env
+    - echo "DB_USERNAME=root" >> .env
+    - echo "DB_PASSWORD=rootpassword" >> .env
     - echo "" >> .env
     - echo "CACHE_DRIVER=array" >> .env
     - echo "QUEUE_CONNECTION=sync" >> .env
@@ -119,10 +109,6 @@ test:coverage:
       done
     - echo "Setting up database and user..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "DROP USER IF EXISTS 'laravel'@'%';"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE USER 'laravel'@'%' IDENTIFIED WITH mysql_native_password BY 'password';"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "GRANT ALL PRIVILEGES ON *.* TO 'laravel'@'%' WITH GRANT OPTION;"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "FLUSH PRIVILEGES;"
     - echo "Setting up Laravel environment..."
     - rm -f .env
     - echo "APP_NAME=LibraryManagement" > .env
@@ -135,8 +121,8 @@ test:coverage:
     - echo "DB_HOST=mysql" >> .env
     - echo "DB_PORT=3306" >> .env
     - echo "DB_DATABASE=library_db" >> .env
-    - echo "DB_USERNAME=laravel" >> .env
-    - echo "DB_PASSWORD=password" >> .env
+    - echo "DB_USERNAME=root" >> .env
+    - echo "DB_PASSWORD=rootpassword" >> .env
     - echo "" >> .env
     - echo "CACHE_DRIVER=array" >> .env
     - echo "QUEUE_CONNECTION=sync" >> .env
