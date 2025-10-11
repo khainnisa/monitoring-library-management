@@ -40,41 +40,90 @@ test:unit:
           echo "MySQL is ready!"
           break
         fi
-        echo "Waiting for MySQL..."
+        echo "Waiting for MySQL... ($i/30)"
         sleep 2
       done
-    - echo "Setting up database and user..."
+    - echo "Setting up database..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SHOW DATABASES;"
     - echo "Setting up Laravel environment..."
+    # Hapus semua cache dan config lama TERMASUK .env.example
     - rm -rf bootstrap/cache/*.php
+    - rm -rf storage/framework/cache/data/*
     - rm -f .env
-    - echo "APP_NAME=LibraryManagement" > .env
-    - echo "APP_ENV=testing" >> .env
-    - echo "APP_KEY=" >> .env
-    - echo "APP_DEBUG=true" >> .env
-    - echo "APP_URL=http://localhost" >> .env
-    - echo "" >> .env
-    - echo "DB_CONNECTION=mysql" >> .env
-    - echo "DB_HOST=mysql" >> .env
-    - echo "DB_PORT=3306" >> .env
-    - echo "DB_DATABASE=library_db" >> .env
-    - echo "DB_USERNAME=root" >> .env
-    - echo "DB_PASSWORD=rootpassword" >> .env
-    - echo "" >> .env
-    - echo "CACHE_DRIVER=array" >> .env
-    - echo "QUEUE_CONNECTION=sync" >> .env
-    - echo "SESSION_DRIVER=array" >> .env
+    - rm -f .env.example
+    # Pastikan tidak ada file config yang ter-cache
+    - rm -f config/database.php.cache || true
+    - |
+      cat > .env << EOF
+      APP_NAME=LibraryManagement
+      APP_ENV=testing
+      APP_KEY=
+      APP_DEBUG=true
+      APP_URL=http://localhost
+      
+      LOG_CHANNEL=stack
+      LOG_LEVEL=debug
+      
+      DB_CONNECTION=mysql
+      DB_HOST=mysql
+      DB_PORT=3306
+      DB_DATABASE=library_db
+      DB_USERNAME=root
+      DB_PASSWORD=rootpassword
+      
+      CACHE_DRIVER=array
+      QUEUE_CONNECTION=sync
+      SESSION_DRIVER=array
+      SESSION_LIFETIME=120
+      EOF
     - echo "Current .env content:"
     - cat .env
-    - php artisan config:clear
+    # PENTING: Clear semua cache Laravel SEBELUM generate key
+    - php artisan config:clear || true
+    - php artisan cache:clear || true
+    - php artisan route:clear || true
+    - php artisan view:clear || true
+    # Verify .env dibaca dengan benar
+    - echo "Verifying database config from .env:"
+    - grep DB_ .env
+    - echo "Testing dengan credentials ROOT:"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT USER(), DATABASE();"
+    # Generate APP_KEY dengan cara yang benar
     - php artisan key:generate --force --ansi
     - echo "After key generate:"
     - cat .env | grep APP_KEY
+    # Verifikasi database connection dengan ROOT user
+    - echo "Testing database connection dengan ROOT user..."
+    - php -r "echo 'DB_USERNAME: ' . getenv('DB_USERNAME') . PHP_EOL;"
+    - php -r "echo 'DB_HOST: ' . getenv('DB_HOST') . PHP_EOL;"
+    - |
+      php artisan tinker --execute="
+      echo 'Laravel DB Config:' . PHP_EOL;
+      echo 'Username: ' . config('database.connections.mysql.username') . PHP_EOL;
+      echo 'Host: ' . config('database.connections.mysql.host') . PHP_EOL;
+      echo 'Database: ' . config('database.connections.mysql.database') . PHP_EOL;
+      try {
+        DB::connection()->getPdo();
+        echo 'Database connection SUCCESS with ROOT user!' . PHP_EOL;
+      } catch (Exception \$e) {
+        echo 'Connection FAILED: ' . \$e->getMessage() . PHP_EOL;
+        exit(1);
+      }
+      "
+    - php artisan db:show || php artisan migrate:status || echo "Checking connection..."
+    # Run migrations
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
-    - echo "Running tests..."
+    # Setup storage
+    - echo "Setting up storage..."
     - mkdir -p storage/test-results
+    - mkdir -p storage/logs
+    - mkdir -p storage/framework/{sessions,views,cache}
     - chmod -R 777 storage
+    - chmod -R 777 bootstrap/cache
+    # Run tests
+    - echo "Running tests..."
     - vendor/bin/phpunit --log-junit=storage/test-results/test-results.xml || true
   artifacts:
     when: always
@@ -104,37 +153,58 @@ test:coverage:
           echo "MySQL is ready!"
           break
         fi
-        echo "Waiting for MySQL..."
+        echo "Waiting for MySQL... ($i/30)"
         sleep 2
       done
-    - echo "Setting up database and user..."
+    - echo "Setting up database..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
     - echo "Setting up Laravel environment..."
+    # Hapus cache dan config lama
     - rm -rf bootstrap/cache/*.php
+    - rm -rf storage/framework/cache/data/*
     - rm -f .env
-    - echo "APP_NAME=LibraryManagement" > .env
-    - echo "APP_ENV=testing" >> .env
-    - echo "APP_KEY=" >> .env
-    - echo "APP_DEBUG=true" >> .env
-    - echo "APP_URL=http://localhost" >> .env
-    - echo "" >> .env
-    - echo "DB_CONNECTION=mysql" >> .env
-    - echo "DB_HOST=mysql" >> .env
-    - echo "DB_PORT=3306" >> .env
-    - echo "DB_DATABASE=library_db" >> .env
-    - echo "DB_USERNAME=root" >> .env
-    - echo "DB_PASSWORD=rootpassword" >> .env
-    - echo "" >> .env
-    - echo "CACHE_DRIVER=array" >> .env
-    - echo "QUEUE_CONNECTION=sync" >> .env
-    - echo "SESSION_DRIVER=array" >> .env
-    - php artisan config:clear
+    # Buat .env dengan heredoc
+    - |
+      cat > .env << EOF
+      APP_NAME=LibraryManagement
+      APP_ENV=testing
+      APP_KEY=
+      APP_DEBUG=true
+      APP_URL=http://localhost
+      
+      LOG_CHANNEL=stack
+      LOG_LEVEL=debug
+      
+      DB_CONNECTION=mysql
+      DB_HOST=mysql
+      DB_PORT=3306
+      DB_DATABASE=library_db
+      DB_USERNAME=root
+      DB_PASSWORD=rootpassword
+      
+      CACHE_DRIVER=array
+      QUEUE_CONNECTION=sync
+      SESSION_DRIVER=array
+      SESSION_LIFETIME=120
+      EOF
+    # Clear cache dan generate key
+    - php artisan config:clear || true
+    - php artisan cache:clear || true
     - php artisan key:generate --force --ansi
+    - echo "APP_KEY generated:"
+    - cat .env | grep APP_KEY
+    # Run migrations
     - php artisan migrate:fresh --seed --force
+    # Setup storage
+    - mkdir -p storage/framework/{sessions,views,cache}
+    - chmod -R 777 storage
+    - chmod -R 777 bootstrap/cache
+    # Install Xdebug
     - echo "Installing Xdebug for coverage..."
     - pecl install xdebug
     - docker-php-ext-enable xdebug
     - echo "xdebug.mode=coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+    # Run tests with coverage
     - echo "Running tests with coverage..."
     - vendor/bin/phpunit --coverage-text --coverage-cobertura=coverage.cobertura.xml
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
@@ -143,18 +213,23 @@ test:coverage:
       coverage_report:
         coverage_format: cobertura
         path: coverage.cobertura.xml
+    paths:
+      - coverage.cobertura.xml
+    expire_in: 1 week
   only:
     - main
     - dev
   allow_failure: true
 
 deploy:staging:
-  image: php:8.2-fpm
+  image: alpine:latest
   stage: deploy
   environment:
     name: staging
     url: https://staging.library-management.com
     on_stop: stop:staging
+  before_script:
+    - apk add --no-cache openssh-client bash
   script:
     - echo "Deploying to STAGING environment"
     - echo "Application - $CI_PROJECT_NAME"
@@ -167,12 +242,14 @@ deploy:staging:
   when: manual
 
 deploy:production:
-  image: php:8.2-fpm
+  image: alpine:latest
   stage: deploy
   environment:
     name: production
     url: https://library-management.com
     on_stop: stop:production
+  before_script:
+    - apk add --no-cache openssh-client bash
   script:
     - echo "Deploying to PRODUCTION environment"
     - echo "Application - $CI_PROJECT_NAME"
@@ -184,7 +261,7 @@ deploy:production:
   when: manual
 
 stop:staging:
-  image: php:8.2-fpm
+  image: alpine:latest
   stage: deploy
   environment:
     name: staging
@@ -196,7 +273,7 @@ stop:staging:
     - dev
 
 stop:production:
-  image: php:8.2-fpm
+  image: alpine:latest
   stage: deploy
   environment:
     name: production
