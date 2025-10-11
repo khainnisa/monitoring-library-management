@@ -12,7 +12,12 @@ variables:
   MYSQL_DATABASE: library_test_db
   MYSQL_USER: laravel_test
   MYSQL_PASSWORD: laravel_test
+  DB_CONNECTION: mysql
   DB_HOST: mysql
+  DB_PORT: 3306
+  DB_DATABASE: library_test_db
+  DB_USERNAME: laravel_test
+  DB_PASSWORD: laravel_test
 
 # Cache dependencies
 cache:
@@ -39,7 +44,7 @@ test:unit:
     - php artisan key:generate
     - php artisan config:clear
     - php artisan migrate:fresh --seed --env=testing
-    - php artisan test --parallel
+    - php artisan test --parallel --log-junit=test-results.xml
   artifacts:
     when: always
     reports:
