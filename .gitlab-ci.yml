@@ -73,7 +73,7 @@ test:unit:
     - rm -rf bootstrap/cache/packages.php
     - rm -rf bootstrap/cache/services.php
     - echo "Force reload environment variables..."
-    - php -r "foreach (file('.env') as \$line) { if (trim(\$line) && strpos(\$line, '=') !== false && strpos(\$line, '#') !== 0) { putenv(trim(\$line)); } }"
+    - php -r "foreach (file('.env') as $line) { if (trim($line) && strpos($line, '=') !== false && strpos($line, '#') !== 0) { putenv(trim($line)); } }"
     - echo "Verify .env database config:"
     - grep DB_ .env
     - echo ""
@@ -121,7 +121,7 @@ test:unit:
     - php artisan db:monitor || php artisan db:show || echo "Attempting connection test..."
     - echo ""
     - echo "Verify connection with custom PHP script..."
-    - php -r "require 'vendor/autoload.php'; \$app = require_once 'bootstrap/app.php'; \$kernel = \$app->make(Illuminate\Contracts\Console\Kernel::class); \$kernel->bootstrap(); echo '✓ Laravel DB Username: ' . config('database.connections.mysql.username') . PHP_EOL; echo '✓ Laravel DB Host: ' . config('database.connections.mysql.host') . PHP_EOL; echo '✓ Laravel DB Database: ' . config('database.connections.mysql.database') . PHP_EOL; try { \$pdo = DB::connection()->getPdo(); echo '✓ PDO Connection: SUCCESS' . PHP_EOL; echo '✓ Connected as: ' . DB::select(\"SELECT USER() as user\")[0]->user . PHP_EOL; } catch (Exception \$e) { echo '✗ Connection FAILED: ' . \$e->getMessage() . PHP_EOL; exit(1); }"
+    - php -r "require 'vendor/autoload.php'; $app = require_once 'bootstrap/app.php'; $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class); $kernel->bootstrap(); echo '✓ Laravel DB Username: ' . config('database.connections.mysql.username') . PHP_EOL; echo '✓ Laravel DB Host: ' . config('database.connections.mysql.host') . PHP_EOL; echo '✓ Laravel DB Database: ' . config('database.connections.mysql.database') . PHP_EOL; try { $pdo = DB::connection()->getPdo(); echo '✓ PDO Connection: SUCCESS' . PHP_EOL; echo '✓ Connected as: ' . DB::select(\"SELECT USER() as user\")[0]->user . PHP_EOL; } catch (Exception $e) { echo '✗ Connection FAILED: ' . $e->getMessage() . PHP_EOL; exit(1); }"
     - echo "========================================="
     - echo ""
     - echo "Running migrations..."
@@ -188,7 +188,7 @@ test:coverage:
     - php artisan config:clear || true
     - php artisan cache:clear || true
     - rm -rf bootstrap/cache/config.php
-    - php -r "foreach (file('.env') as \$line) { if (trim(\$line) && strpos(\$line, '=') !== false && strpos(\$line, '#') !== 0) { putenv(trim(\$line)); } }"
+    - php -r "foreach (file('.env') as $line) { if (trim($line) && strpos($line, '=') !== false && strpos($line, '#') !== 0) { putenv(trim($line)); } }"
     - php -r "file_put_contents('config/database.php', str_replace(\"'username' => env('DB_USERNAME', 'forge')\", \"'username' => env('DB_USERNAME', 'root')\", file_get_contents('config/database.php')));"
     - php -r "file_put_contents('config/database.php', str_replace(\"'username' => 'laravel'\", \"'username' => env('DB_USERNAME', 'root')\", file_get_contents('config/database.php')));"
     - php artisan key:generate --force --ansi --no-interaction
