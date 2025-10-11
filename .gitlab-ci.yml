@@ -63,18 +63,18 @@ test:unit:
     - echo "Current .env content:"
     - cat .env
 
-    # clear cache setelah env selesai dibuat
+    - echo "Generate Laravel APP_KEY..."
+    - chmod 644 .env
+    - php artisan key:generate --force --ansi
+    - echo "After key generate:"
+    - cat .env | grep APP_KEY
+
     - echo "Clearing Laravel caches..."
     - php artisan config:clear || true
     - php artisan cache:clear || true
 
     - echo "Testing MySQL connection with ROOT user:"
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "SELECT USER(), DATABASE();"
-
-    - echo "Generate Laravel APP_KEY..."
-    - php artisan key:generate --force --ansi
-    - echo "After key generate:"
-    - cat .env | grep APP_KEY
 
     - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
@@ -139,12 +139,19 @@ test:coverage:
     - echo "Current .env content:"
     - cat .env
 
+    - echo "Generate Laravel APP_KEY..."
+    - php artisan key:generate --force --ansi
+    - echo "After key generate:"
+    - cat .env | grep APP_KEY
+
     - echo "Clearing Laravel caches..."
     - php artisan config:clear || true
     - php artisan cache:clear || true
 
-    - php artisan key:generate --force --ansi
+    - echo "Running migrations..."
     - php artisan migrate:fresh --seed --force
+    
+    - echo "Setting up storage..."
     - chmod -R 777 storage
     - chmod -R 777 bootstrap/cache
 
