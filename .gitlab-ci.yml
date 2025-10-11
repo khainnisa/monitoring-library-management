@@ -1,6 +1,3 @@
-# Docker image untuk CI/CD
-image: php:8.2-cli
-
 # Stages dalam pipeline
 stages:
   - test
@@ -10,14 +7,14 @@ stages:
 variables:
   MYSQL_ROOT_PASSWORD: rootpassword
   MYSQL_DATABASE: library_db
-  MYSQL_USER: root
-  MYSQL_PASSWORD: rootpassword
+  MYSQL_USER: laravel
+  MYSQL_PASSWORD: password
   DB_CONNECTION: mysql
   DB_HOST: mysql
   DB_PORT: 3306
   DB_DATABASE: library_db
-  DB_USERNAME: root
-  DB_PASSWORD: rootpassword
+  DB_USERNAME: laravel
+  DB_PASSWORD: password
 
 # Cache dependencies
 cache:
@@ -37,10 +34,11 @@ before_script:
 # TEST UNIT
 # -------------------------
 test:unit:
+  image: php:8.2-fpm
   stage: test
   services:
     - name: mysql:8.0
-      alias: mysql                               # ✅ Tambahkan alias agar host mysql dikenali
+      alias: mysql
       command: ["--default-authentication-plugin=mysql_native_password"]
   script:
     # Wait for MySQL to be ready
@@ -68,6 +66,7 @@ test:unit:
     # Setup Laravel environment
     - cp .env.example .env
     - sed -i "s/DB_HOST=.*/DB_HOST=mysql/" .env
+    - sed -i "s/DB_DATABASE=.*/DB_DATABASE=library_db/" .env
     - sed -i "s/DB_USERNAME=.*/DB_USERNAME=laravel/" .env
     - sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=password/" .env
     - php artisan key:generate
@@ -81,7 +80,7 @@ test:unit:
     - mkdir -p storage/test-results
     - chmod -R 777 storage
     - echo "Running tests..."
-    - vendor/bin/phpunit --log-junit=$(pwd)/storage/test-results/test-results.xml || true
+    - vendor/bin/phpunit --log-junit=storage/test-results/test-results.xml || true
 
   artifacts:
     when: always
@@ -90,6 +89,7 @@ test:unit:
     paths:
       - storage/logs/
       - storage/test-results/
+    expire_in: 1 week
   only:
     - main
     - dev
@@ -98,6 +98,7 @@ test:unit:
 # TEST COVERAGE
 # -------------------------
 test:coverage:
+  image: php:8.2-fpm
   stage: test
   services:
     - name: mysql:8.0
@@ -105,6 +106,7 @@ test:coverage:
       command: ["--default-authentication-plugin=mysql_native_password"]
   script:
     # Wait for MySQL
+    - echo "Waiting for MySQL to be ready..."
     - |
       for i in {1..30}; do
         if mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "SELECT 1" &>/dev/null; then
@@ -116,6 +118,7 @@ test:coverage:
       done
 
     # Create database and user
+    - echo "Setting up database and user..."
     - |
       mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD -e "
         CREATE DATABASE IF NOT EXISTS library_db;
@@ -127,6 +130,7 @@ test:coverage:
     # Setup environment
     - cp .env.example .env
     - sed -i "s/DB_HOST=.*/DB_HOST=mysql/" .env
+    - sed -i "s/DB_DATABASE=.*/DB_DATABASE=library_db/" .env
     - sed -i "s/DB_USERNAME=.*/DB_USERNAME=laravel/" .env
     - sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=password/" .env
     - php artisan key:generate
@@ -139,9 +143,14 @@ test:coverage:
     - echo "xdebug.mode=coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
     # Run tests with coverage
-    - vendor/bin/phpunit --coverage-text
+    - vendor/bin/phpunit --coverage-text --coverage-cobertura=coverage.cobertura.xml
 
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.cobertura.xml
   only:
     - main
     - dev
@@ -151,6 +160,7 @@ test:coverage:
 # DEPLOY STAGING
 # -------------------------
 deploy:staging:
+  image: php:8.2-fpm
   stage: deploy
   environment:
     name: staging
@@ -171,6 +181,7 @@ deploy:staging:
 # DEPLOY PRODUCTION
 # -------------------------
 deploy:production:
+  image: php:8.2-fpm
   stage: deploy
   environment:
     name: production
@@ -190,6 +201,7 @@ deploy:production:
 # STOP ENVIRONMENTS
 # -------------------------
 stop:staging:
+  image: php:8.2-fpm
   stage: deploy
   environment:
     name: staging
@@ -201,6 +213,7 @@ stop:staging:
     - dev
 
 stop:production:
+  image: php:8.2-fpm
   stage: deploy
   environment:
     name: production
