@@ -106,17 +106,17 @@ test:coverage:
     - echo "Setting up database and user..."
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE DATABASE IF NOT EXISTS library_db;"
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "DROP USER IF EXISTS 'laravel'@'%';"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE USER 'laravel'@'%' IDENTIFIED WITH mysql_native_password BY 'password';"
-    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "GRANT ALL PRIVILEGES ON *.* TO 'laravel'@'%' WITH GRANT OPTION;"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "CREATE USER 'laravel'@'%' IDENTIFIED BY 'password';"
+    - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "GRANT ALL PRIVILEGES ON library_db.* TO 'laravel'@'%';"
     - mysql -hmysql -uroot -p$MYSQL_ROOT_PASSWORD --ssl=0 -e "FLUSH PRIVILEGES;"
     - echo "Setting up Laravel environment..."
     - cp .env.example .env
-    - sed -i "s/^APP_KEY=.*/APP_KEY=/" .env
-    - sed -i "s/^DB_HOST=.*/DB_HOST=mysql/" .env
-    - sed -i "s/^DB_DATABASE=.*/DB_DATABASE=library_db/" .env
-    - sed -i "s/^DB_USERNAME=.*/DB_USERNAME=laravel/" .env
-    - sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=password/" .env
-    - php artisan key:generate --force --ansi
+    - echo "APP_KEY=" >> .env
+    - sed -i "s/DB_HOST=.*/DB_HOST=mysql/" .env
+    - sed -i "s/DB_DATABASE=.*/DB_DATABASE=library_db/" .env
+    - sed -i "s/DB_USERNAME=.*/DB_USERNAME=laravel/" .env
+    - sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=password/" .env
+    - php artisan key:generate --force
     - php artisan config:clear
     - php artisan migrate:fresh --seed --force
     - echo "Installing Xdebug for coverage..."
