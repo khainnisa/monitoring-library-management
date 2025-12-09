@@ -1,19 +1,24 @@
 version: "3.8"
 
 services:
+  # Laravel App
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: library-app
     restart: unless-stopped
     ports:
       - "8000:80"
+      - "5173:5173"
     volumes:
-      - ./:/var/www/html
+      - .:/var/www/html
     depends_on:
       - db
     networks:
       - laravel
 
+  # MySQL Database
   db:
     image: mysql:8.0
     container_name: library-db
@@ -21,8 +26,8 @@ services:
     environment:
       MYSQL_DATABASE: library_db
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_PASSWORD: password
       MYSQL_USER: laravel
+      MYSQL_PASSWORD: password
     ports:
       - "3307:3306"
     volumes:
@@ -30,6 +35,7 @@ services:
     networks:
       - laravel
 
+  # phpMyAdmin
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: library-phpmyadmin
@@ -45,9 +51,76 @@ services:
     networks:
       - laravel
 
+  # cAdvisor
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: library-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - laravel
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: library-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - cadvisor
+    networks:
+      - laravel
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: library-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://103.150.191.185:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - laravel
+
+# Volumes
 volumes:
   dbdata:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
 
+# Networks
 networks:
   laravel:
     driver: bridge
