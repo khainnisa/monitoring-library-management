@@ -55,5 +55,11 @@ class DatabaseSeeder extends Seeder
             'description' => 'Epic fantasy',
             'stock' => 8
         ]);
+
+        // Seeder baru
+        $this->call([
+            MemberSeeder::class,
+            BorrowingSeeder::class,
+        ]);
     }
 }

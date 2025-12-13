@@ -51,7 +51,26 @@ services:
     networks:
       - laravel
 
-  # cAdvisor
+  # Node Exporter (untuk system metrics: CPU, memory, disk, network)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: library-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - laravel
+
+  # cAdvisor (untuk container metrics)
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: library-cadvisor
@@ -67,6 +86,20 @@ services:
     privileged: true
     devices:
       - /dev/kmsg
+    networks:
+      - laravel
+
+  # MySQL Exporter (untuk MySQL metrics)
+  mysql-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: library-mysql-exporter
+    restart: unless-stopped
+    ports:
+      - "9104:9104"
+    environment:
+      DATA_SOURCE_NAME: "laravel:password@(db:3306)/library_db"
+    depends_on:
+      - db
     networks:
       - laravel
 
@@ -88,6 +121,8 @@ services:
       - "--web.enable-lifecycle"
     depends_on:
       - cadvisor
+      - node-exporter
+      - mysql-exporter
     networks:
       - laravel
 
