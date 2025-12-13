@@ -47,8 +47,9 @@ RUN chown -R www-data:www-data /var/www/html \
 # Install dependency Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Generate APP_KEY Laravel
-# RUN php artisan key:generate
+# Install dependency frontend menggunakan npm
+RUN npm install && npm run build
+RUN rm -rf node_modules
 
 # Expose port 80 untuk container
 EXPOSE 80
