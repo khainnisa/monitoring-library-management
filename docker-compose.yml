@@ -13,7 +13,7 @@ services:
       - "5173:5173"
     volumes:
       - ./storage:/var/www/html/storage
-      - ./app/bootstrap/cache:/var/www/html/bootstrap/cache
+      - ./.env:/var/www/html/.env
     depends_on:
       - db
     networks:
