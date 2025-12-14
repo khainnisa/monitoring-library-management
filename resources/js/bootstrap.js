@@ -5,7 +5,11 @@ window.axios = axios;
 window.axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
 
 // ← TAMBAHKAN INI: Set base URL backend
-window.axios.defaults.baseURL = "http://localhost:8000"; // Sesuaikan dengan URL Laravel kamu
+// Deteksi otomatis: localhost untuk dev, IP VPS untuk production
+window.axios.defaults.baseURL = 
+    window.location.hostname === 'localhost' 
+        ? 'http://localhost:8000'  // Development
+        : 'http://103.150.191.185:8000';  // Production - IP VPS kamu
 
 // ← TAMBAHKAN INI: Request interceptor untuk attach token
 axios.interceptors.request.use(
