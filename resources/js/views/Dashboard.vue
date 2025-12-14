@@ -359,12 +359,16 @@ export default {
                 day: 'numeric' 
             });
         },
-        logout() {
-            if (confirm("Are you sure you want to logout?")) {
-                this.authStore.logout();
-                this.$router.push({ name: "login" });
-            }
-        },
+        async logout() {
+                if (confirm("Are you sure you want to logout?")) {
+                    // Logout dari store (akan clear token & state)
+                    await this.authStore.logout();
+                    
+                    // Router guard akan otomatis redirect ke login
+                    // karena isAuthenticated sudah false
+                    this.$router.push({ name: "login" });
+                }
+            },
     },
 };
 </script>

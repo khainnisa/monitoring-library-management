@@ -98,5 +98,14 @@ export const useAuthStore = defineStore("auth", {
         delete axios.defaults.headers.common["Authorization"];
       }
     },
+
+    // Tambahkan method ini setelah logout()
+    clearAuth() {
+      this.token = null;
+      this.user = null;
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      delete axios.defaults.headers.common["Authorization"];
+    },
   },
 });

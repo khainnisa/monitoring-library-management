@@ -160,15 +160,25 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   
+  console.log('🔍 Navigation:', {
+    to: to.path,
+    from: from.path,
+    isAuthenticated: authStore.isAuthenticated,
+    hasToken: !!authStore.token
+  });
+  
   // Check if route requires authentication
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    console.log('❌ Not authenticated, redirect to login');
     next({ name: 'login' });
   } 
   // Check if route requires guest (not authenticated)
   else if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    console.log('⚠️ Already authenticated, redirect to dashboard');
     next({ name: 'dashboard' });
   } 
   else {
+    console.log('✅ Navigation allowed');
     next();
   }
 });
