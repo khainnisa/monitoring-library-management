@@ -165,4 +165,10 @@ export default {
     },
   },
 };
-</script>
+</script>/*************  ✨ Windsurf Command ⭐  *************/
+/*******  d8e59427-53de-4089-a379-2263a6d1ad78  *******//**
+
+ * Go back to dashboard
+
+ * @return {void}
+

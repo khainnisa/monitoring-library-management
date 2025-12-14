@@ -84,6 +84,9 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     privileged: true
+    command:
+      - --housekeeping_interval=10s
+      - --docker_only=true
     devices:
       - /dev/kmsg
     networks:

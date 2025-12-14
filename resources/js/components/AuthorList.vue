@@ -1,14 +1,28 @@
 <template>
   <div class="container mx-auto px-4 py-8">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold text-gray-800">Authors Management</h1>
-      <router-link
-        to="/authors/create"
-        class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition"
-      >
-        + Add New Author
-      </router-link>
+    <div class="mb-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <button
+            @click="goBack"
+            type="button"
+            class="p-2 hover:bg-gray-100 rounded-lg transition"
+            title="Back to Dashboard"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
+          <h1 class="text-3xl font-bold text-gray-800">Authors Management</h1>
+        </div>
+        <router-link
+          to="/authors/create"
+          class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition"
+        >
+          + Add New Author
+        </router-link>
+      </div>
     </div>
 
     <!-- Search -->
@@ -159,7 +173,7 @@ export default {
         this.fetchAuthors();
       } catch (error) {
         console.error('Error deleting author:', error);
-        alert('Failed to delete author. Please try again.');
+        alert('Cannot delete this author because there are still books associated with them. Please delete or reassign the books first.');
       }
     },
     changePage(page) {
@@ -167,6 +181,10 @@ export default {
         this.currentPage = page;
         this.fetchAuthors();
       }
+    },
+    goBack() {
+      // Kembali ke dashboard
+      this.$router.push('/dashboard');
     },
   },
 };

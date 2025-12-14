@@ -92,7 +92,7 @@ export default {
   methods: {
     async fetchCategory(id) {
       try {
-        const response = await axios.get(`/api/categories/${id}`);
+        const { data: response } = await axios.get(`/api/categories/${id}`);
         this.formData = {
           name: response.data.name,
           description: response.data.description || '',

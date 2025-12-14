@@ -12,8 +12,16 @@
 
     <!-- Form -->
     <form @submit.prevent="handleSubmit" class="bg-white shadow-md rounded-lg p-6">
-      <!-- Member -->
-      <div class="mb-4">
+      <!-- Loading State -->
+      <div v-if="dataLoading" class="text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <p class="mt-2 text-gray-600">Loading data...</p>
+      </div>
+
+      <!-- Form Fields (hidden saat loading) -->
+      <div v-else>
+        <!-- Member -->
+        <div class="mb-4">
         <label class="block text-gray-700 font-semibold mb-2">
           Member <span class="text-red-500">*</span>
         </label>
@@ -150,6 +158,7 @@
           Cancel
         </button>
       </div>
+      </div>
     </form>
   </div>
 </template>
@@ -174,34 +183,76 @@ export default {
       books: [],
       errors: {},
       loading: false,
+      dataLoading: true, // Loading state untuk data members/books
       isEdit: false,
     };
   },
-  mounted() {
-    this.fetchMembers();
-    this.fetchBooks();
-    
+  async mounted() {
+    // Cek dulu apakah mode edit atau create
     const id = this.$route.params.id;
     if (id) {
-      this.isEdit = true;
-      this.fetchBorrowing(id);
+      this.isEdit = true; // Set isEdit SEBELUM fetch data
     }
+    
+    // Fetch members dan books dulu sebelum load borrowing data
+    await Promise.all([
+      this.fetchMembers(),
+      this.fetchBooks()
+    ]);
+    
+    // Baru fetch borrowing data kalau mode edit
+    if (this.isEdit) {
+      await this.fetchBorrowing(id);
+    }
+    
+    // Set loading selesai
+    this.dataLoading = false;
   },
   methods: {
     async fetchMembers() {
       try {
-        const response = await axios.get('/api/members?per_page=100');
-        this.members = response.data.data;
+        let allMembers = [];
+        let currentPage = 1;
+        let lastPage = 1;
+        
+        // Loop sampai dapat semua halaman
+        do {
+          const response = await axios.get(`/api/members?page=${currentPage}&per_page=100`);
+          const data = response.data;
+          
+          allMembers = allMembers.concat(data.data || []);
+          lastPage = data.last_page || 1;
+          currentPage++;
+        } while (currentPage <= lastPage);
+        
+        this.members = allMembers;
+        console.log('Members loaded:', this.members.length, 'members total');
       } catch (error) {
         console.error('Error fetching members:', error);
+        alert('Failed to load members');
       }
     },
     async fetchBooks() {
       try {
-        const response = await axios.get('/api/books?per_page=100');
-        this.books = response.data.data;
+        let allBooks = [];
+        let currentPage = 1;
+        let lastPage = 1;
+        
+        // Loop sampai dapat semua halaman
+        do {
+          const response = await axios.get(`/api/books?page=${currentPage}&per_page=100`);
+          const data = response.data;
+          
+          allBooks = allBooks.concat(data.data || []);
+          lastPage = data.last_page || 1;
+          currentPage++;
+        } while (currentPage <= lastPage);
+        
+        this.books = allBooks;
+        console.log('Books loaded:', this.books.length, 'books total');
       } catch (error) {
         console.error('Error fetching books:', error);
+        alert('Failed to load books');
       }
     },
     async fetchBorrowing(id) {
@@ -219,6 +270,8 @@ export default {
           status: borrowing.status,
           fine_amount: borrowing.fine_amount || '',
         };
+        
+        console.log('Borrowing loaded:', this.formData);
       } catch (error) {
         console.error('Error fetching borrowing:', error);
         alert('Failed to fetch borrowing data');
@@ -267,6 +320,10 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    goBack() {
+      // Kembali ke dashboard
+      this.$router.push('/dashboard');
     },
   },
 };
